@@ -1,0 +1,15 @@
+<app-page-header
+  title="ACode Learn"
+  description="Welcome to the modern ACode Learn platform."
+/>
+
+@if (isAuthenticated()) {
+  <p-card>
+    <p>Hello, {{ currentUser()?.displayName }}!</p>
+    <p>Use the navigation above to explore courses and resources.</p>
+  </p-card>
+} @else {
+  <p-card>
+    <p>Please sign in to access courses, resources, and your profile.</p>
+  </p-card>
+}

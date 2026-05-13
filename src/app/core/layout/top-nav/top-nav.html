@@ -1,0 +1,19 @@
+<p-menubar [model]="menuItems()">
+  <ng-template #start>
+    <a routerLink="/" class="brand">ACode Learn</a>
+  </ng-template>
+  <ng-template #end>
+    @if (isAuthenticated()) {
+      <span class="user-name">{{ currentUser()?.displayName }}</span>
+      <p-button
+        label="Logout"
+        icon="pi pi-sign-out"
+        severity="secondary"
+        [text]="true"
+        (onClick)="logout()"
+      />
+    } @else {
+      <p-button label="Login" icon="pi pi-sign-in" (onClick)="login()" />
+    }
+  </ng-template>
+</p-menubar>

@@ -1,0 +1,68 @@
+:host {
+  display: block;
+}
+
+.admin-layout {
+  display: grid;
+  gap: 1.25rem;
+  align-items: start;
+}
+
+.admin-sidebar {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.admin-content {
+  min-width: 0;
+}
+
+.admin-sidebar-heading {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-bottom: 1rem;
+}
+
+.admin-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.admin-subtitle {
+  font-size: 0.9rem;
+  color: var(--p-text-muted-color);
+}
+
+.admin-user-card {
+  margin-top: auto;
+}
+
+.admin-user-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.admin-user-menu-label {
+  font-size: 0.8rem;
+  color: var(--p-text-muted-color);
+}
+
+.admin-user-name {
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+@media (min-width: 960px) {
+  .admin-layout {
+    grid-template-columns: 18rem minmax(0, 1fr);
+  }
+
+  .admin-sidebar {
+    position: sticky;
+    top: 1rem;
+  }
+}

@@ -15,6 +15,8 @@ import { providePrimeNG } from 'primeng/config';
 import { authInterceptor } from './core/auth/auth.interceptor';
 import { AuthService } from './core/auth/auth.service';
 import { routes } from './app.routes';
+import { authConfig } from './core/auth/auth.config';
+import { provideAuth } from 'angular-auth-oidc-client';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -35,5 +37,6 @@ export const appConfig: ApplicationConfig = {
     MessageService,
     ConfirmationService,
     provideAppInitializer(() => inject(AuthService).initialize()),
+    provideAuth(authConfig),
   ],
 };

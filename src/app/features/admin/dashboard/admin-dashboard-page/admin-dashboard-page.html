@@ -1,0 +1,34 @@
+<app-page-header
+  title="Admin dashboard"
+  description="Bootstrap area for platform-wide administration."
+/>
+
+<div class="admin-metrics-grid">
+  @for (metric of metrics(); track metric.label) {
+    <p-card>
+      <div class="metric-header">
+        <i [class]="metric.icon" aria-hidden="true"></i>
+        <span>{{ metric.label }}</span>
+      </div>
+      <div class="metric-value">{{ metric.value }}</div>
+      <p class="metric-description">{{ metric.description }}</p>
+    </p-card>
+  }
+</div>
+
+<p-card header="Planned modules">
+  <div class="admin-modules">
+    @for (module of upcomingModules(); track module.label) {
+      <p-button
+        [label]="module.label"
+        [icon]="module.icon"
+        severity="secondary"
+        [outlined]="true"
+        [disabled]="true"
+      />
+    }
+  </div>
+  <p class="admin-modules-note">
+    User, course, resource, enrollment, and audit management are staged in the next phases.
+  </p>
+</p-card>

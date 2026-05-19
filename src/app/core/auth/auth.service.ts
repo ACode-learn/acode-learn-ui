@@ -1,6 +1,10 @@
-import { Injectable, computed, signal } from '@angular/core';
-import Keycloak from 'keycloak-js';
-import { environment } from '../../../environments/environment';
+import { Injectable, computed, inject, signal } from '@angular/core';
+import {
+  OidcSecurityService,
+  type LoginResponse,
+} from 'angular-auth-oidc-client';
+import { firstValueFrom } from 'rxjs';
+import { authConfig } from './auth.config';
 import {
   AppRole,
   AuthUser,
@@ -12,11 +16,15 @@ import {
   providedIn: 'root',
 })
 export class AuthService {
-  private keycloak: Keycloak | null = null;
+  private readonly oidcSecurityService = inject(OidcSecurityService);
+  private readonly oidcClientId = this.resolveOidcClientId();
+  private initializationPromise: Promise<void> | null = null;
+
+  private readonly authenticated = signal(false);
 
   readonly currentUser = signal<AuthUser | null>(null);
 
-  readonly isAuthenticated = computed(() => this.currentUser() !== null);
+  readonly isAuthenticated = computed(() => this.authenticated());
 
   readonly isStudent = computed(
     () => this.currentUser()?.roles.includes('student') ?? false,
@@ -31,44 +39,55 @@ export class AuthService {
   );
 
   async initialize(): Promise<void> {
-    this.keycloak = new Keycloak({
-      url: environment.keycloak.url,
-      realm: environment.keycloak.realm,
-      clientId: environment.keycloak.clientId,
-    });
+    if (this.initializationPromise) {
+      return this.initializationPromise;
+    }
 
+    this.initializationPromise = this.initializeInternal();
+
+    return this.initializationPromise;
+  }
+
+  async ensureInitialized(): Promise<void> {
+    await this.initialize();
+  }
+
+  private async initializeInternal(): Promise<void> {
     try {
-      const authenticated = await this.keycloak.init({
-        onLoad: 'check-sso',
-        pkceMethod: 'S256',
-        silentCheckSsoRedirectUri:
-          window.location.origin + '/silent-check-sso.html',
-      });
+      const loginResponse = await firstValueFrom(this.oidcSecurityService.checkAuth());
+      this.authenticated.set(loginResponse.isAuthenticated);
 
-      if (authenticated) {
-        this.refreshUserFromToken();
+      if (!this.isLoginResponseAuthenticated(loginResponse)) {
+        this.currentUser.set(null);
+        return;
       }
 
-      this.keycloak.onAuthSuccess = () => this.refreshUserFromToken();
-      this.keycloak.onAuthRefreshSuccess = () => this.refreshUserFromToken();
-      this.keycloak.onAuthLogout = () => this.currentUser.set(null);
+      await this.refreshUserFromToken();
     } catch (error) {
-      console.error('Keycloak initialization failed', error);
+      console.error('OIDC initialization failed', error);
       this.currentUser.set(null);
+      this.authenticated.set(false);
     }
   }
 
   async login(redirectUri?: string): Promise<void> {
-    await this.keycloak?.login({
-      redirectUri: redirectUri ?? window.location.origin,
+    this.oidcSecurityService.authorize(undefined, {
+      redirectUrl: redirectUri ?? window.location.origin,
     });
   }
 
   async logout(redirectUri?: string): Promise<void> {
-    await this.keycloak?.logout({
-      redirectUri: redirectUri ?? window.location.origin,
-    });
+    const logoutOptions = redirectUri
+      ? {
+          customParams: {
+            post_logout_redirect_uri: redirectUri,
+          },
+        }
+      : undefined;
+
+    await firstValueFrom(this.oidcSecurityService.logoff(undefined, logoutOptions));
     this.currentUser.set(null);
+    this.authenticated.set(false);
   }
 
   hasRole(role: AppRole): boolean {
@@ -80,27 +99,24 @@ export class AuthService {
   }
 
   async getAccessToken(): Promise<string | null> {
-    if (!this.keycloak) {
-      return null;
-    }
     try {
-      await this.keycloak.updateToken(30);
-      return this.keycloak.token ?? null;
+      const token = await firstValueFrom(this.oidcSecurityService.getAccessToken());
+      return token || null;
     } catch {
       return null;
     }
   }
 
-  private refreshUserFromToken(): void {
-    const claims = this.keycloak?.tokenParsed as JwtTokenClaims | undefined;
-    if (!claims) {
+  private async refreshUserFromToken(): Promise<void> {
+    const claims = await this.getAccessTokenClaims();
+
+    if (!claims?.sub) {
       this.currentUser.set(null);
       return;
     }
 
     const realmRoles = claims.realm_access?.roles ?? [];
-    const clientRoles =
-      claims.resource_access?.[environment.keycloak.clientId]?.roles ?? [];
+    const clientRoles = this.resolveClientRoles(claims);
     const roles = mapKeycloakRolesToAppRoles([...realmRoles, ...clientRoles]);
 
     this.currentUser.set({
@@ -110,5 +126,49 @@ export class AuthService {
       email: claims.email,
       roles,
     });
+  }
+
+  private async getAccessTokenClaims(): Promise<JwtTokenClaims | null> {
+    try {
+      return (await firstValueFrom(
+        this.oidcSecurityService.getPayloadFromAccessToken(),
+      )) as JwtTokenClaims | null;
+    } catch {
+      return null;
+    }
+  }
+
+  private resolveClientRoles(claims: JwtTokenClaims): readonly string[] {
+    if (!claims.resource_access) {
+      return [];
+    }
+
+    if (this.oidcClientId) {
+      return claims.resource_access[this.oidcClientId]?.roles ?? [];
+    }
+
+    return Object.values(claims.resource_access).flatMap(
+      (resourceAccess) => resourceAccess.roles ?? [],
+    );
+  }
+
+  private resolveOidcClientId(): string | null {
+    const config = authConfig.config;
+
+    if (!config) {
+      return null;
+    }
+
+    if (Array.isArray(config)) {
+      return config[0]?.clientId ?? null;
+    }
+
+    return config.clientId ?? null;
+  }
+
+  private isLoginResponseAuthenticated(
+    loginResponse: LoginResponse,
+  ): loginResponse is LoginResponse & { isAuthenticated: true } {
+    return loginResponse.isAuthenticated;
   }
 }

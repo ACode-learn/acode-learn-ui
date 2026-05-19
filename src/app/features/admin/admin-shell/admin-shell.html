@@ -1,0 +1,31 @@
+<div class="admin-layout">
+  <aside class="admin-sidebar" data-testid="admin-sidebar">
+    <p-card>
+      <div class="admin-sidebar-heading">
+        <span class="admin-title">Admin panel</span>
+        <span class="admin-subtitle">Platform-level management</span>
+      </div>
+      <p-menu [model]="menuItems()" />
+    </p-card>
+
+    @if (currentUser(); as user) {
+      <p-card class="admin-user-card">
+        <div class="admin-user-menu">
+          <span class="admin-user-menu-label">Signed in as</span>
+          <span class="admin-user-name">{{ user.displayName }}</span>
+          <p-button
+            label="Logout"
+            icon="pi pi-sign-out"
+            severity="secondary"
+            [text]="true"
+            (onClick)="logout()"
+          />
+        </div>
+      </p-card>
+    }
+  </aside>
+
+  <section class="admin-content">
+    <router-outlet />
+  </section>
+</div>

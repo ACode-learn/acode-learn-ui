@@ -34,6 +34,13 @@ export class TopNav {
         routerLink: '/instructor',
       });
     }
+    if (this.authService.isAdmin()) {
+      items.push({
+        label: 'Admin',
+        icon: 'pi pi-shield',
+        routerLink: '/admin',
+      });
+    }
 
     return items;
   });

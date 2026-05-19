@@ -19,12 +19,19 @@ export const routes: Routes = [
     path: '',
     loadComponent: () =>
       import('./core/layout/app-shell/app-shell').then((m) => m.AppShell),
+    canActivate: [authGuard],
     children: [
       {
         path: '',
         pathMatch: 'full',
         loadComponent: () =>
           import('./features/home/home-page/home-page').then((m) => m.HomePage),
+      },
+      {
+        path: 'admin',
+        canActivate: [roleGuard(['admin'])],
+        loadChildren: () =>
+          import('./features/admin/admin.routes').then((m) => m.ADMIN_ROUTES),
       },
       {
         path: 'student',
